@@ -27,11 +27,12 @@ jobs:
       - name: Patch virgl renderer string
         run: |
           cd mesa-24.0.8
-          grep -r "virgl renderer" --include="*.c" --include="*.h" -l
-          find . -name "*.c" -o -name "*.h" | xargs grep -l "virgl renderer" | while read f; do
-            sed -i 's/virgl renderer/Adreno (TM) 660/g' "$f"
-            echo "Patched: $f"
-          done
+          sed -i 's/"virgl renderer"/"Adreno (TM) 660"/g' \
+            src/gallium/drivers/virgl/virgl_context.c \
+            src/gallium/drivers/virgl/virgl_screen.c 2>/dev/null || true
+          find . -name "*.c" | xargs grep -l "virgl renderer" 2>/dev/null | \
+            xargs sed -i 's/virgl renderer/Adreno (TM) 660/g' 2>/dev/null || true
+          echo "Patch done"
 
       - name: Configure Mesa
         run: |
