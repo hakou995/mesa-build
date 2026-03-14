@@ -1,0 +1,70 @@
+name: Build Mesa virtio_gpu_dri
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build python3-pip \
+            libdrm-dev libx11-dev libxext-dev libxfixes-dev \
+            libxcb-glx0-dev libxcb-dri2-0-dev libxcb-dri3-dev \
+            libxcb-present-dev libxshmfence-dev libxxf86vm-dev \
+            libxrandr-dev llvm-dev libelf-dev libwayland-dev \
+            wayland-protocols libwayland-egl-backend-dev \
+            python3-mako glslang-tools libzstd-dev \
+            gcc-multilib g++-multilib
+
+      - name: Download Mesa 24.0.8
+        run: |
+          wget https://archive.mesa3d.org/mesa-24.0.8.tar.xz
+          tar xf mesa-24.0.8.tar.xz
+
+      - name: Patch virgl renderer string
+        run: |
+          cd mesa-24.0.8
+          python3 -c "
+          import os, re
+          count = 0
+          for root, dirs, files in os.walk('.'):
+              for f in files:
+                  if not (f.endswith('.c') or f.endswith('.h')):
+                      continue
+                  path = os.path.join(root, f)
+                  try:
+                      data = open(path).read()
+                      if 'virgl renderer' in data or 'virgl (%s)' in data:
+                          new = data.replace('virgl renderer', 'Adreno (TM) 660')
+                          new = new.replace('virgl (%s)', 'Adreno (TM) 660')
+                          open(path, 'w').write(new)
+                          print('Patched:', path)
+                          count += 1
+                  except: pass
+          print('Total patched:', count)
+          "
+
+      - name: Configure Mesa
+        run: |
+          cd mesa-24.0.8
+          meson setup build \
+            -Dgallium-drivers=virgl \
+            -Ddri-drivers= \
+            -Dvulkan-drivers= \
+            -Dplatforms=x11 \
+            -Dglx=dri \
+            -Dbuildtype=release
+
+      - name: Build
+        run: |
+          cd mesa-24.0.8
+          ninja -C build src/gallium/targets/dri/virtio_gpu_dri.so
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtio_gpu_dri
+          path: mesa-24.0.8/build/src/gallium/targets/dri/virtio_gpu_dri.so
