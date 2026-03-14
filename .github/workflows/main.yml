@@ -1,0 +1,56 @@
+name: Build Mesa virtio_gpu_dri
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build python3-pip \
+            libdrm-dev libx11-dev libxext-dev libxfixes-dev \
+            libxcb-glx0-dev libxcb-dri2-0-dev libxcb-dri3-dev \
+            libxcb-present-dev libxshmfence-dev libxxf86vm-dev \
+            libxrandr-dev llvm-dev libelf-dev libwayland-dev \
+            wayland-protocols libwayland-egl-backend-dev \
+            python3-mako glslang-tools libzstd-dev \
+            gcc-multilib g++-multilib
+
+      - name: Download Mesa 24.0.8
+        run: |
+          wget https://archive.mesa3d.org/mesa-24.0.8.tar.xz
+          tar xf mesa-24.0.8.tar.xz
+
+      - name: Patch virgl renderer string
+        run: |
+          cd mesa-24.0.8
+          grep -r "virgl renderer" --include="*.c" --include="*.h" -l
+          find . -name "*.c" -o -name "*.h" | xargs grep -l "virgl renderer" | while read f; do
+            sed -i 's/virgl renderer/Adreno (TM) 660/g' "$f"
+            echo "Patched: $f"
+          done
+
+      - name: Configure Mesa
+        run: |
+          cd mesa-24.0.8
+          meson setup build \
+            -Dgallium-drivers=virgl \
+            -Ddri-drivers= \
+            -Dvulkan-drivers= \
+            -Dplatforms=x11 \
+            -Dglx=dri \
+            -Dbuildtype=release
+
+      - name: Build
+        run: |
+          cd mesa-24.0.8
+          ninja -C build src/gallium/targets/dri/virtio_gpu_dri.so
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtio_gpu_dri
+          path: mesa-24.0.8/build/src/gallium/targets/dri/virtio_gpu_dri.so
