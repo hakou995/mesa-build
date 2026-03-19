@@ -28,22 +28,13 @@ jobs:
       - name: Patch virgl renderer string
         run: |
           cd mesa-24.0.8
-          python3 -c "
-          import os, re
-          for root, dirs, files in os.walk('.'):
-              for f in files:
-                  if not (f.endswith('.c') or f.endswith('.h')):
-                      continue
-                  path = os.path.join(root, f)
-                  try:
-                      data = open(path).read()
-                      if 'virgl renderer' in data or 'virgl (%s)' in data:
-                          new = data.replace('virgl renderer', 'Adreno (TM) 660')
-                          new = re.sub(r'\"virgl \(%s\)\"\s*,\s*\w+', '\"Adreno (TM) 660\"', new)
-                          open(path, 'w').write(new)
-                          print('Patched:', path)
-                  except: pass
-          "
+          grep -n "virgl" src/gallium/drivers/virgl/virgl_screen.c | head -20
+          sed -i 's/snprintf(renderer, sizeof(renderer), "virgl (%s)", v2\.renderer)/snprintf(renderer, sizeof(renderer), "Adreno (TM) 660")/g' \
+            src/gallium/drivers/virgl/virgl_screen.c
+          sed -i 's/"virgl renderer"/"Adreno (TM) 660"/g' \
+            src/gallium/drivers/virgl/virgl_screen.c
+          grep -n "Adreno\|virgl" src/gallium/drivers/virgl/virgl_screen.c | head -10
+          echo "Patch done"
 
       - name: Configure Mesa
         run: |
