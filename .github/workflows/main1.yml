@@ -52,7 +52,6 @@ jobs:
           cd mesa-24.0.8
           meson setup build \
             -Dgallium-drivers=virgl \
-            -Ddri-drivers= \
             -Dvulkan-drivers= \
             -Dplatforms=x11 \
             -Dglx=dri \
