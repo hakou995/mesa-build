@@ -29,7 +29,7 @@ jobs:
         run: |
           cd mesa-24.0.8
           python3 -c "
-          import os
+          import os, re
           for root, dirs, files in os.walk('.'):
               for f in files:
                   if not (f.endswith('.c') or f.endswith('.h')):
@@ -39,7 +39,7 @@ jobs:
                       data = open(path).read()
                       if 'virgl renderer' in data or 'virgl (%s)' in data:
                           new = data.replace('virgl renderer', 'Adreno (TM) 660')
-                          new = new.replace('virgl (%s)', 'Adreno (TM) 660')
+                          new = re.sub(r'\"virgl \(%s\)\"\s*,\s*\w+', '\"Adreno (TM) 660\"', new)
                           open(path, 'w').write(new)
                           print('Patched:', path)
                   except: pass
